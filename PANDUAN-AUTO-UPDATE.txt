@@ -1,0 +1,225 @@
+==========================================================================
+ NESTHINK PHOTO SELECTOR  -  PANDUAN AUTO-UPDATE (versi paket: v0.5.0)
+==========================================================================
+
+Tujuan: orang yang sudah memakai aplikasi cukup menekan "Update sekarang"
+di dalam aplikasi. Tidak perlu download dan instal ulang manual.
+
+--------------------------------------------------------------------------
+ A. CARA KERJA SINGKAT
+--------------------------------------------------------------------------
+1. Kamu rilis versi baru (misal 0.5.1) lewat GitHub.
+2. GitHub otomatis membangun installer, menandatanganinya, dan membuat
+   Release berisi installer + file latest.json (isinya: versi terbaru,
+   link download, tanda tangan).
+3. Aplikasi user, saat dibuka (dan lewat tombol "Cek update"), membaca
+   latest.json. Kalau versinya lebih baru dari yang terpasang, muncul
+   popup "Update tersedia".
+4. User klik "Update sekarang": aplikasi mengunduh (ada progress bar),
+   memverifikasi tanda tangan, memasang, lalu restart sendiri.
+   Project dan pengaturan user aman (disimpan terpisah dari aplikasi).
+
+--------------------------------------------------------------------------
+ B. YANG DIBUTUHKAN
+--------------------------------------------------------------------------
+- Akun GitHub dan 1 repository untuk project ini.
+- Node.js 20+ (untuk membuat kunci dan menaikkan versi). nodejs.org
+- Git terpasang di komputer.
+- Tidak perlu Rust dan tidak perlu Mac: build Windows dan macOS dilakukan
+  oleh GitHub Actions.
+
+File yang berubah / ditambahkan di paket ini:
+  src-tauri/Cargo.toml                 (tambah plugin updater + process)
+  src-tauri/src/main.rs                (daftarkan plugin)
+  src-tauri/tauri.conf.json            (alamat update + kunci publik, ISI MANUAL)
+  src-tauri/capabilities/default.json  (izin updater)
+  ui/index.html                        (popup update, progress, tombol Cek update)
+  .github/workflows/build.yml          (build + tanda tangan + buat Release)
+  scripts/bump-version.mjs             (naikkan versi di semua file sekaligus)
+  package.json                         (perintah:  npm run bump <versi>)
+  PANDUAN-AUTO-UPDATE.txt              (file ini)
+
+--------------------------------------------------------------------------
+ C. SETUP SEKALI SAJA
+--------------------------------------------------------------------------
+LANGKAH 1 - Buat repository GitHub
+  - Buat repo baru. Disarankan PUBLIC (paling mudah, lihat bagian F kalau
+    mau private). Upload isi folder project ke repo itu.
+
+LANGKAH 2 - Buat kunci tanda tangan update (sekali seumur aplikasi)
+  Simpan kunci DI LUAR folder project (misal folder Documents), supaya tidak
+  ikut ter-upload ke GitHub saat "git add -A". Di folder project, jalankan:
+      npm install
+      npx tauri signer generate -w $HOME\Documents\nesthink-update.key
+  - Saat diminta password, ISI password (jangan dikosongkan) dan ingat.
+  - Hasilnya 2 file di Documents:
+      nesthink-update.key      = KUNCI PRIVAT (rahasia!)
+      nesthink-update.key.pub  = kunci publik
+
+  !! PENTING !!
+  - Simpan nesthink-update.key + passwordnya di tempat aman (backup
+    ke 2 tempat). JANGAN di-upload ke GitHub dan jangan dibagikan.
+  - Kalau kunci ini hilang, kamu TIDAK BISA lagi merilis update untuk user
+    lama. Mereka harus instal manual dari awal.
+  - Kunci ini tidak boleh diganti setelah aplikasi disebar.
+  - Kalau kunci privat sempat ter-upload ke GitHub (cek daftar file repo),
+    anggap bocor: buat pasangan kunci BARU, ganti pubkey di tauri.conf.json
+    dan kedua secret GitHub, lalu hapus file .key dari repo. Aman dilakukan
+    selama aplikasi belum disebar ke user.
+
+LANGKAH 3 - Isi kunci publik dan alamat update
+  Buka src-tauri/tauri.conf.json, bagian "plugins" > "updater":
+  - "pubkey"    : ganti seluruh teksnya dengan ISI file nesthink-update.key.pub
+                  (satu baris teks panjang, salin semua).
+  - "endpoints" : ganti USERNAME-GITHUB-KAMU dan NAMA-REPO, hasilnya:
+        https://github.com/BUDI/photo-selector/releases/latest/download/latest.json
+
+LANGKAH 4 - Simpan kunci privat di GitHub Secrets
+  Repo di GitHub > Settings > Secrets and variables > Actions >
+  New repository secret. Buat 2 secret:
+  - Nama: TAURI_SIGNING_PRIVATE_KEY
+    Isi : seluruh isi file nesthink-update.key (buka dengan Notepad, salin semua)
+  - Nama: TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+    Isi : password yang tadi kamu buat
+
+LANGKAH 5 - Izinkan Actions membuat Release
+  Repo > Settings > Actions > General > Workflow permissions >
+  pilih "Read and write permissions" > Save.
+
+LANGKAH 6 - Rilis pertama (v0.5.0)
+  Di folder project:
+      git add -A
+      git commit -m "v0.5.0 auto-update"
+      git tag v0.5.0
+      git push
+      git push --tags
+  Buka tab Actions di GitHub, tunggu build selesai (sekitar 10-20 menit).
+  Hasilnya ada di tab Releases: installer .exe (Windows), .dmg (Mac), dan
+  latest.json. Bagikan installer itu ke user.
+
+  CATATAN: user yang masih memakai versi LAMA (sebelum fitur ini ada) harus
+  instal manual versi ini satu kali. Setelah itu update berikutnya otomatis.
+
+LANGKAH 7 - Tes (sangat disarankan)
+  1. Instal v0.5.0 di komputermu.
+  2. Rilis v0.5.1 (lihat bagian D).
+  3. Buka aplikasi v0.5.0: harus muncul popup "Update tersedia v0.5.1".
+     Atau buka Pengaturan > Umum > Cek update.
+
+--------------------------------------------------------------------------
+ D. RILIS UPDATE / PATCH BARU (tiap kali ada perubahan)
+--------------------------------------------------------------------------
+Contoh: dari 0.5.0 ke 0.5.1.
+  1. Ubah kode/fiturnya (atau minta Claude mengubahnya, lalu timpa file project).
+  2. Naikkan versi di semua file sekaligus:
+         npm run bump 0.5.1
+     (otomatis mengubah package.json, tauri.conf.json, Cargo.toml, README)
+  3. Kirim dan beri tag (tag HARUS "v" + versi yang sama):
+         git add -A
+         git commit -m "v0.5.1"
+         git tag v0.5.1
+         git push
+         git push --tags
+  4. Tunggu GitHub Actions selesai. Release v0.5.1 + latest.json terbuat
+     otomatis. Semua user yang membuka aplikasinya akan ditawari update.
+
+Aturan versi:
+  - Format angka tiga bagian: MAJOR.MINOR.PATCH, misal 0.5.1.
+  - Versi harus SELALU LEBIH BESAR dari sebelumnya, kalau tidak update tidak
+    muncul. Perbaikan kecil = naikkan angka terakhir (0.5.1, 0.5.2).
+    Fitur baru = naikkan angka tengah (0.6.0).
+  - Jangan menimpa tag yang sama. Kalau ada kesalahan, rilis versi berikutnya.
+
+Catatan rilis (isi popup): teks "releaseBody" di .github/workflows/build.yml
+atau edit deskripsi Release di GitHub setelah selesai dibuat. Isi deskripsi
+Release akan tampil di popup update (maks. 600 karakter pertama).
+
+--------------------------------------------------------------------------
+ E. TAMPILAN DI SISI USER
+--------------------------------------------------------------------------
+- Saat aplikasi dibuka: dicek otomatis di latar belakang (bisa dimatikan di
+  Pengaturan > Umum > "Cek update otomatis").
+- Manual: Pengaturan > Umum > Cek update. Versi terpasang tampil di situ dan
+  di pojok kiri bawah beranda.
+- Kalau ada update saat user sedang menyeleksi foto, tidak ada popup yang
+  mengganggu: muncul pemberitahuan kecil, dan update bisa dipasang nanti
+  dari Pengaturan.
+- Windows: installer berjalan mode "passive" (ada jendela progress kecil),
+  lalu aplikasi terbuka lagi sendiri.
+
+--------------------------------------------------------------------------
+ F. KALAU REPOSITORY PRIVATE / FILE DISIMPAN DI HOSTING SENDIRI
+--------------------------------------------------------------------------
+Aplikasi user tidak punya akses ke repo private, jadi latest.json dan
+installer harus ada di alamat yang bisa dibuka publik (hosting sendiri,
+Cloudflare R2, Netlify, server pribadi, dsb).
+
+1. Ganti "endpoints" di tauri.conf.json ke alamat latest.json kamu.
+2. Setelah build, ambil dari hasil build (Actions > Artifacts atau folder
+   src-tauri/target/release/bundle/nsis/): file installer *-setup.exe dan
+   file tanda tangannya *-setup.exe.sig. (Pastikan TAURI_SIGNING_PRIVATE_KEY
+   terpasang saat build supaya file .sig terbuat.)
+3. Upload installer ke hosting, lalu buat/ubah latest.json:
+
+   {
+     "version": "0.5.1",
+     "notes": "Perbaikan grid dan loading saat pindah foto.",
+     "pub_date": "2026-12-01T10:00:00Z",
+     "platforms": {
+       "windows-x86_64": {
+         "signature": "ISI TEKS DARI FILE .sig",
+         "url": "https://domainmu.com/download/NESTHINK-PHOTO-SELECTOR_0.5.1_x64-setup.exe"
+       }
+     }
+   }
+
+   (macOS memakai platform "darwin-universal" dengan file .app.tar.gz dan
+   .sig-nya; kalau hanya melayani Windows, cukup bagian windows-x86_64.)
+4. Setiap rilis baru: upload installer baru, lalu perbarui "version",
+   "signature", dan "url" di latest.json.
+
+--------------------------------------------------------------------------
+ G. MASALAH UMUM
+--------------------------------------------------------------------------
+- Build gagal dengan pesan "A public key has been found, but no private key":
+  environment variable TAURI_SIGNING_PRIVATE_KEY kosong.
+  * Di GitHub: secret belum dibuat, salah nama, atau dibuat di tab "Variables"
+    (harus tab "Secrets", jenis Repository secret). Nama harus persis
+    TAURI_SIGNING_PRIVATE_KEY dan TAURI_SIGNING_PRIVATE_KEY_PASSWORD.
+    Setelah diperbaiki: buka run yang gagal > Re-run all jobs.
+  * Build di komputer sendiri (PowerShell), isi dulu sebelum build:
+        $env:TAURI_SIGNING_PRIVATE_KEY = Get-Content $HOME\Documents\nesthink-update.key -Raw
+        $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = "passwordmu"
+        npm run build      (atau perintah build yang biasa kamu pakai)
+    Catatan: installer .exe tetap jadi walau error ini muncul; yang gagal
+    hanya file tanda tangan update (.sig).
+- Pesan "incorrect updater private key password": password di secret tidak
+  cocok dengan password saat membuat kunci.
+- Build GitHub gagal dengan pesan lain: buka run > klik job yang merah >
+  buka langkah yang bertanda merah, baca baris terakhirnya.
+- Cek update bilang "Tidak bisa cek update": internet mati, endpoint belum
+  diganti, atau Release belum selesai dibuat / masih draft. Buka alamat
+  endpoint di browser: harus tampil isi JSON.
+- Update tidak muncul: versi baru tidak lebih besar, tag tidak sama dengan
+  versi, atau Release ditandai "pre-release" (alamat /releases/latest/
+  mengabaikan pre-release).
+- Update ditolak (signature error): kunci publik di tauri.conf.json tidak
+  cocok dengan kunci privat yang dipakai saat build. Jangan ganti kunci
+  setelah aplikasi disebar.
+- Windows menampilkan peringatan SmartScreen saat instal pertama: normal
+  untuk aplikasi tanpa sertifikat code signing berbayar. Ini tidak
+  mempengaruhi mekanisme update.
+- macOS: tanpa Apple Developer ID, Gatekeeper bisa menahan aplikasi saat
+  pertama dibuka (klik kanan > Open). Update otomatis di Mac paling
+  mulus kalau aplikasi sudah di-sign dan di-notarize.
+
+--------------------------------------------------------------------------
+ H. CHECKLIST CEPAT
+--------------------------------------------------------------------------
+Setup sekali:  [ ] repo  [ ] kunci dibuat + di-backup  [ ] pubkey &
+               endpoints terisi  [ ] 2 secret GitHub  [ ] permission
+               Read and write  [ ] rilis v0.5.0
+Tiap patch:    [ ] npm run bump X.Y.Z  [ ] commit  [ ] git tag vX.Y.Z
+               [ ] git push + git push --tags  [ ] tunggu Actions hijau
+               [ ] cek Release dan latest.json ada
+==========================================================================

@@ -1,0 +1,5 @@
+node_modules/
+src-tauri/target/
+# KUNCI PRIVAT UPDATE: jangan pernah masuk repo
+*.key
+*.key.txt

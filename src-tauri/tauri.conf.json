@@ -1,0 +1,49 @@
+{
+  "productName": "NESTHINK PHOTO SELECTOR",
+  "mainBinaryName": "NESTHINK PHOTO SELECTOR",
+  "version": "0.5.0",
+  "identifier": "studio.nesthink.photoselector",
+  "build": {
+    "frontendDist": "../ui"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "Nesthink Photo Selector",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 900,
+        "minHeight": 600
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "category": "Photography",
+    "icon": [
+      "icons/icon.ico",
+      "icons/icon.icns",
+      "icons/icon.png"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "12.0"
+    },
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU2OUMyMkI3QTg5QTUxNzEKUldSeFVacW90eUtjNWcvVU1qWDY3YVNIb0VaWnd6TWNnR1RqSmQzVVNQQlFCMHFjWGEvZE1IZUgK",
+      "endpoints": [
+        "https://github.com/YugraaCH/PHOTO-SELECTOR-by-Nesthink-Studio/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}

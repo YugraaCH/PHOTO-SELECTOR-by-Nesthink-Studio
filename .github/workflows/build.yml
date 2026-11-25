@@ -1,0 +1,52 @@
+# Build + rilis otomatis (Windows .exe dan macOS .dmg) + file update untuk fitur "Update di dalam aplikasi".
+# Rilis versi baru:   npm run bump 0.5.1  ->  commit  ->  git tag v0.5.1  ->  git push --tags
+# GitHub akan membangun, menandatangani, lalu membuat Release berisi installer dan latest.json.
+# Run workflow manual (tanpa tag) hanya membuat file build di tab Actions > Artifacts, tidak membuat Release.
+name: build
+on:
+  workflow_dispatch: {}
+  push:
+    tags: ['v*']
+jobs:
+  build:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            args: --bundles nsis
+          - os: macos-latest
+            args: --target universal-apple-darwin --bundles app,dmg
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.os == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+      - uses: swatinem/rust-cache@v2
+        with: { workspaces: src-tauri }
+      - run: npm install
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+          releaseName: 'Nesthink Photo Selector ${{ github.ref_name }}'
+          releaseBody: 'Update aplikasi. Buka aplikasi lama kamu, lalu pilih "Update sekarang" saat notifikasi muncul. Tidak perlu instal ulang.'
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nesthink-${{ matrix.os }}
+          if-no-files-found: ignore
+          path: |
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
